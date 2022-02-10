@@ -8,17 +8,19 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "hardhat/console.sol";
 
+import { Base64 } from "./libraries/Base64.sol";
+
 contract MyEpicNFT is ERC721URIStorage {
   // Counters helps keep track of tokenIds
   using Counters for Counters.Counter;
   Counters.Counter private _tokenIds;
 
   // baseSvg variable that all of our NFTs will use. We simply change the words that fill it.
-  string baseSvg = "<svg xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='xMinyMin meet' viewbox='0 0 350 350'><style>.base { fill: white; font-family: serif; font-size: 24px; } </style><rect width='100%' height='100%' fill='black' /><text x='50%' y='50%' class='base' dominant-baseline='middle' text-anchor='middle'>";
+  string baseSvg = "<svg xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='xMinYMin meet' viewBox='0 0 350 350'><style>.base { fill: white; font-family: serif; font-size: 24px; }</style><rect width='100%' height='100%' fill='black' /><text x='50%' y='50%' class='base' dominant-baseline='middle' text-anchor='middle'>";
 
-  string[] firstWords = ["Goofy", "Quirky", "Ostentatious", "Absurd", "Gregarious", "Dubious"];
-  string[] secondWords = ["Juggernaut", "Tabletop", "Cougar", "Quentin", "Booger", "Server"];
-  string[] thirdWords =["Fluid", "Solid", "Gas", "Bohemia", "Fantasy", "Hulud"];
+  string[] firstWords = ["Goofy", "Quirky", "Ostentatious", "Absurd", "Gregarious", "Dubious", "Googly", "Noogly", "Woogly", "Sugary", "Handsomely", "Incredulous", "Fanatical", "Superbly"];
+  string[] secondWords = ["Juggernaut", "Tabletop", "Cougar", "Quentin", "Booger", "Server", "Change", "Goodness", "Grace", "Impossibility", "Certainty", "God", "Wonder"];
+  string[] thirdWords =["Fluid", "Solid", "Gas", "Bohemia", "Fantasy", "Hulud", "Shai", "Rookie", "Cookie", "HTTPS", "Steph", "Curry", "Klay", "Ray", "Boot"];
 
   constructor() ERC721 ("PhunPhrases", "PHUN") {
     console.log("Welcome to the matrix.");
@@ -42,17 +44,52 @@ contract MyEpicNFT is ERC721URIStorage {
     return thirdWords[rand];
   }
 
+  function random(string memory input) internal pure returns (uint256) {
+    return uint256(keccak256(abi.encodePacked(input)));
+  }
+
   function makeAnEpicNFT() public {
     uint256 newItemId = _tokenIds.current();
+
+    string memory first = pickRandomFirstWord(newItemId);
+    string memory second = pickRandomSecondWord(newItemId);
+    string memory third = pickRandomThirdWord(newItemId);
+    string memory combinedWord = string(abi.encodePacked(first, second, third));
+
+    string memory finalSvg = string(abi.encodePacked(baseSvg, combinedWord, "</text></svg>"));
+
+    string memory json = Base64.encode(
+      bytes(
+          string(
+              abi.encodePacked(
+                  '{"name": "',
+                  // We set the title of our NFT as the generated word.
+                  combinedWord,
+                  '", "description": "A highly acclaimed collection of squares.", "image": "data:image/svg+xml;base64,',
+                  // We add data:image/svg+xml;base64 and then append our base64 encode our svg.
+                  Base64.encode(bytes(finalSvg)),
+                  '"}'
+              )
+          )
+      )
+    );
+
+    string memory finalTokenUri = string(
+      abi.encodePacked("data:application/json;base64,", json)
+    );
+
+    console.log("\n--------------------");
+    console.log(finalTokenUri);
+    console.log("--------------------\n");
 
     // Actually mint the NFT
     _safeMint(msg.sender, newItemId);
 
     // Set metadata for token
-    _setTokenURI(newItemId, "https://jsonkeeper.com/b/EVI7");
-    console.log("An NFT with ID %s was minted to %s", newItemId, msg.sender);
+    _setTokenURI(newItemId, finalTokenUri);
 
     // Increment counter when NFT is minted so we have different identifiers for each NFT
     _tokenIds.increment();
+    console.log("An NFT with ID %s was minted to %s", newItemId, msg.sender);
   }
 }
